@@ -103,7 +103,9 @@ public:
 		RxPackets,
                 RxClose,
 		SendReport1,
+		SendDelay1,
 		SendReport2,
+		SendDelay2,
 		SendReport3,
 		Idle
 		};
@@ -154,8 +156,8 @@ public:
 
         enum    {
                 INITIAL_DELAY = 2000,
-                RXTIMEOUT_DELAY = 1000,
-                RXCLOSE_DELAY = 500,
+                RXTIMEOUT_DELAY = 5000,
+                RXCLOSE_DELAY = 3000,
                 REPORT_DELAY = 1000,
                 };
 private:
@@ -274,8 +276,15 @@ Fsm::State Fsm::evaluate(bool fEntry)
 			this->reportMsg[0] = uint8_t(this->msgCount & 0xFF);
 			this->reportMsg[1] = uint8_t(this->msgCount >> 8);
 			this->tx(this->reportMsg, sizeof(this->reportMsg));
-			this->startTimer(REPORT_DELAY);
 			}
+		if (this->fTxDone)
+			result = State::SendDelay1;
+		break;
+
+	case State::SendDelay1:
+		if (fEntry)
+			this->startTimer(REPORT_DELAY);
+
 		if (this->fTimerDone)
 			result = State::SendReport2;
 		break;
@@ -285,8 +294,15 @@ Fsm::State Fsm::evaluate(bool fEntry)
 			{
                         lmic_printf("send report 2 (numRx=%u)\n", this->msgCount);
                         this->tx(this->reportMsg, sizeof(this->reportMsg));
-			this->startTimer(REPORT_DELAY);
 			}
+		if (this->fTxDone)
+			result = State::SendDelay2;
+		break;
+
+	case State::SendDelay2:
+		if (fEntry)
+			this->startTimer(REPORT_DELAY);
+
 		if (this->fTimerDone)
 			result = State::SendReport3;
 		break;
@@ -296,9 +312,8 @@ Fsm::State Fsm::evaluate(bool fEntry)
 			{
                         lmic_printf("send report 3 (numRx=%u)\n", this->msgCount);
                         this->tx(this->reportMsg, sizeof(this->reportMsg));
-			this->startTimer(REPORT_DELAY);
 			}
-		if (this->fTimerDone)
+		if (this->fTxDone)
 			result = State::Idle;
 		break;
 
